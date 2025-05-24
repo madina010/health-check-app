@@ -1,0 +1,24 @@
+# Node.js (frontend)
+node_modules/
+dist/
+build/
+*.log
+
+# Python (backend)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+*.sqlite3
+
+# VSCode / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
