@@ -40,9 +40,7 @@ def calculate_for_user(user_id: int):
             "weight": float(health_data.weight),
             "height": float(health_data.height),
         }
-
-        print(f"DEBUG: health_data = {health_data_dict}")
-
+        
         # Получение ответов пользователя
         user_answers_raw = session.query(UserAnswer, Question.weight).join(Question).filter(UserAnswer.user_id == user_id).all()
 
@@ -51,11 +49,13 @@ def calculate_for_user(user_id: int):
             for row in user_answers_raw
         ]
 
-        print(f"DEBUG: user_answers = {user_answers}")
-
         # Расчёт итогового балла
         print("DEBUG: Запуск calculate_health_score()")
         score_result = calculate_health_score(health_data_dict, user_answers, age)
+        
+        print(f"DEBUG: Интерпретация = {score_result.get('interpretation')}")
+        print(f"DEBUG: Итоговый балл = {score_result.get('total_score')}")
+
 
         # Возврат результата
         session.commit()

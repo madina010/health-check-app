@@ -137,3 +137,32 @@ def calculate_user_answers_score(user_answers):
         normalized_score = 0  # Если нет ответов, ставим 0
 
     return normalized_score
+
+def get_interpretation(score: float, age: int) -> str:
+    print(f"DEBUG: Вызов get_interpretation(score={score}, age={age})")
+
+    # Допустим, для пожилых людей (старше 60) границы могут быть чуть мягче
+    if age >= 60:
+        if score >= 80:
+            return "Отличное состояние здоровья с учетом возраста"
+        elif score >= 65:
+            return "Хорошее состояние здоровья с учетом возраста"
+        elif score >= 45:
+            return "Удовлетворительное состояние здоровья с учетом возраста"
+        elif score >= 25:
+            return "Состояние здоровья требует внимания с учетом возраста"
+        else:
+            return "Низкий уровень здоровья с учетом возраста"
+    else:
+        # Текущие стандартные пороги
+        if score >= 85:
+            return "Отличное состояние здоровья"
+        elif score >= 70:
+            return "Хорошее состояние здоровья"
+        elif score >= 50:
+            return "Удовлетворительное состояние здоровья"
+        elif score >= 30:
+            return "Состояние здоровья требует внимания"
+        else:
+            return "Низкий уровень здоровья"
+

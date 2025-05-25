@@ -1,17 +1,16 @@
 from sqlalchemy import text
 from datetime import datetime
 import uuid
+# from huggingface_client import get_recommendation
 
 log_id = uuid.uuid4()
 
 def save_health_score(session, user_id, score_data, age):
     print(f"save_health_score вызван ({log_id}) для user_id={user_id}")
     print("calculate_health_score вызван")
-    """
-    Сохраняет результат расчёта здоровья в базу данных с использованием SQLAlchemy.
-    """
+    # Сохранение результата расчёта здоровья в базу данных с использованием SQLAlchemy.
     total = round(score_data["total_score"], 2)
-    interpretation = score_data.get("interpretation", "Данные отсутствуют")
+    interpretation = score_data.get("interpretation")
     analysis = f"Итоговое состояние здоровья: {total}/100 – {interpretation} (с учетом вашего возраста)"
 
     try:
