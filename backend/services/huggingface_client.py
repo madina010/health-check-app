@@ -2,21 +2,12 @@ import requests
 import os
 
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")  
-
 MODEL = "tiiuae/falcon-7b-instruct"
-
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL}"
 HEADERS = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
 
-
 def get_recommendation(prompt: str) -> str:
-    payload = {
-        "inputs": prompt,
-        "options": {
-            "wait_for_model": True  # Подождать, если модель спит
-        }
-    }
-
+    payload = {"inputs": prompt, "options": {"wait_for_model": True}}
     response = requests.post(API_URL, headers=HEADERS, json=payload)
 
     if response.status_code != 200:

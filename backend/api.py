@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -11,6 +11,9 @@ from backend.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import date
+from typing import List, Dict
+from backend.services.huggingface_client import get_recommendation
+from backend.calculations.prompt_builder import build_prompt
 
 router = APIRouter()
 
@@ -208,3 +211,59 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
         "gender": current_user.gender,
         "birth_date": current_user.birth_date
     }
+
+@router.post("/generate_recommendation")
+def generate_recommendation(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    last_result = (
+        db.query(Result)
+        .filter(Result.user_id == current_user.id)
+        .order_by(Result.created_at.desc())
+        .first()
+    )
+    if not last_result:
+        raise HTTPException(status_code=404, detail="Результаты не найдены")
+
+    score = round(last_result.health_score, 2)
+
+    user_answers = (
+        db.query(UserAnswer, Question)
+        .join(Question, UserAnswer.question_id == Question.id)
+        .filter(UserAnswer.user_id == current_user.id)
+        .all()
+    )
+
+    qa_pairs = []
+    for ua, q in user_answers:
+        ans_text = "Да" if ua.answer else "Нет" if ua.answer is not None else "Не знаю"
+        qa_pairs.append({"question": q.question_text, "answer": ans_text})
+
+    phys_data_entry = (
+        db.query(HealthData)
+        .filter(HealthData.user_id == current_user.id)
+        .order_by(HealthData.created_at.desc())
+        .first()
+    )
+    if not phys_data_entry:
+        raise HTTPException(status_code=404, detail="Физиологические данные не найдены")
+
+    phys_data = {
+        "systolic": phys_data_entry.systolic_bp,
+        "diastolic": phys_data_entry.diastolic_bp,
+        "pulse": phys_data_entry.pulse,
+        "temperature": phys_data_entry.temperature,
+        "height": phys_data_entry.height,
+        "weight": phys_data_entry.weight
+    }
+
+    prompt = build_prompt(score, qa_pairs, phys_data)
+
+    try:
+        recommendation = get_recommendation(prompt)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при генерации рекомендации: {str(e)}")
+
+    last_result.recommendation = recommendation
+    db.commit()
+    db.refresh(last_result)
+
+    return {"recommendation": recommendation}

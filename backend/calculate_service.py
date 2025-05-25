@@ -54,8 +54,6 @@ def calculate_for_user(user_id: int):
         score_result = calculate_health_score(health_data_dict, user_answers, age)
         
         print(f"DEBUG: Интерпретация = {score_result.get('interpretation')}")
-        print(f"DEBUG: Итоговый балл = {score_result.get('total_score')}")
-
 
         # Возврат результата
         session.commit()

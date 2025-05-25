@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, TIMESTAMP, Boolean, Date
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, TIMESTAMP, Boolean, Date, Text
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -64,5 +64,6 @@ class Result(Base):
     health_score = Column(Float, nullable=False)
     analysis_text = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    recommendation = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="results")
