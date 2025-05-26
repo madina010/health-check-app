@@ -140,8 +140,6 @@ def calculate_user_answers_score(user_answers):
 
 def get_interpretation(score: float, age: int) -> str:
     print(f"DEBUG: Вызов get_interpretation(score={score}, age={age})")
-
-    # Допустим, для пожилых людей (старше 60) границы могут быть чуть мягче
     if age >= 60:
         if score >= 80:
             return "Отличное состояние здоровья с учетом возраста"
@@ -154,7 +152,6 @@ def get_interpretation(score: float, age: int) -> str:
         else:
             return "Низкий уровень здоровья с учетом возраста"
     else:
-        # Текущие стандартные пороги
         if score >= 85:
             return "Отличное состояние здоровья"
         elif score >= 70:

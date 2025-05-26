@@ -12,8 +12,12 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import date
 from typing import List, Dict
-from backend.services.huggingface_client import get_recommendation
 from backend.calculations.prompt_builder import build_prompt
+import g4f
+from g4f import ChatCompletion
+from g4f.models import (
+    gpt_4, gpt_4o, gpt_3_5_turbo, claude_3_5_sonnet, llama_3_2_11b, mixtral_8x22b
+)
 
 router = APIRouter()
 
@@ -212,8 +216,17 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
         "birth_date": current_user.birth_date
     }
 
+models_to_try = [
+    gpt_4, gpt_4o, gpt_3_5_turbo,
+    claude_3_5_sonnet,
+    llama_3_2_11b, mixtral_8x22b,
+]
+
 @router.post("/generate_recommendation")
-def generate_recommendation(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def generate_recommendation(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     last_result = (
         db.query(Result)
         .filter(Result.user_id == current_user.id)
@@ -255,15 +268,39 @@ def generate_recommendation(current_user: User = Depends(get_current_user), db: 
         "weight": phys_data_entry.weight
     }
 
-    prompt = build_prompt(score, qa_pairs, phys_data)
+    prompt = build_prompt(score, qa_pairs, phys_data, age=phys_data_entry.age)
 
-    try:
-        recommendation = get_recommendation(prompt)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при генерации рекомендации: {str(e)}")
+    last_exception = None
+    recommendation = None
+
+    for model in models_to_try:
+        try:
+            print(f"[INFO] Trying model: {model.name}")
+            response = ChatCompletion.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                stream=False,
+            )
+
+            if response and isinstance(response, str) and response.strip():
+                recommendation = response
+                print(f"[INFO] Model {model.name} succeeded")
+                break
+        except Exception as e:
+            last_exception = e
+            print(f"[ERROR] Ошибка при вызове модели {model.name}: {e}")
+
+    if not recommendation or not recommendation.strip():
+        raise HTTPException(
+            status_code=500,
+            detail=f"Не удалось получить рекомендацию. Последняя ошибка: {last_exception}"
+        )
 
     last_result.recommendation = recommendation
     db.commit()
     db.refresh(last_result)
+
+    print(f"[INFO] Recommendation saved to DB. Type: {type(recommendation)}")
+    print(f"[INFO] Recommendation content preview: {recommendation[:500]}")
 
     return {"recommendation": recommendation}
