@@ -42,6 +42,7 @@ class Question(Base):
     question_text = Column(String, nullable=False)
     weight = Column(Float, nullable=False)
     category = Column(String, nullable=False)
+    positive_uns = Column(Boolean, nullable=False)
 
     answers = relationship("UserAnswer", back_populates="question")
 

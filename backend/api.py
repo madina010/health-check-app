@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -11,9 +11,8 @@ from backend.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import date
-from typing import List, Dict
+from typing import List
 from backend.calculations.prompt_builder import build_prompt
-import g4f
 from g4f import ChatCompletion
 from g4f.models import (
     gpt_4, gpt_4o, gpt_3_5_turbo, claude_3_5_sonnet, llama_3_2_11b, mixtral_8x22b
@@ -193,9 +192,9 @@ def submit_health_data(data: UserInput, current_user: User = Depends(get_current
     result_data = calculate_for_user(current_user.id)
 
     if result_data:
-        # Передача возраста, он нужен для анализа
         age = current_user.age if hasattr(current_user, 'age') else 0
         save_health_score(db, current_user.id, result_data, age)
+        db.commit()  # коммит один раз в конце всего
 
         return {
             "total_score": round(result_data["total_score"], 2),
@@ -203,8 +202,6 @@ def submit_health_data(data: UserInput, current_user: User = Depends(get_current
             "answers_score": round(result_data["details"]["user_answers_score"], 2),
             "analysis": result_data.get("analysis_text", "")
         }
-
-    return {"error": "Не удалось рассчитать результат"}
 
 @router.get("/users/me")
 def get_current_user_info(current_user: User = Depends(get_current_user)):
