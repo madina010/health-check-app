@@ -2,8 +2,6 @@ import uvicorn
 from fastapi import FastAPI
 from backend.api import router
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-load_dotenv()
 
 app = FastAPI()
 

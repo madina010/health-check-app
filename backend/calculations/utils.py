@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 def validate_positive(value, name="value"):
-    """Проверка, что значение положительное."""
+    # Проверка, что значение положительное.
     if value is None:
         raise ValueError(f"{name} не может быть None")
     if not isinstance(value, (int, float)):
@@ -12,9 +12,7 @@ def validate_positive(value, name="value"):
 
 
 def get_age_norms(age):
-    """
-    Возвращает возрастные нормы для АД, пульса и ИМТ.
-    """
+    # Возврат возрастных норм для АД, пульса и ИМТ.
     # Валидация возраста
     age = validate_positive(age, "age")
     
@@ -53,9 +51,7 @@ def get_age_norms(age):
 
 
 def calculate_physiological_score(health_data, age):
-    """
-    Рассчитывает баллы на основе физиологических данных (АД, пульс, температура, BMI) с учетом возраста.
-    """
+    # Рассчет баллов на основе физиологических данных (АД, пульс, температура, BMI) с учетом возраста.
     # Валидация данных здоровья
     health_data["weight"] = validate_positive(health_data.get("weight"), "weight")
     health_data["height"] = validate_positive(health_data.get("height"), "height")
@@ -73,7 +69,7 @@ def calculate_physiological_score(health_data, age):
     bmi = weight_kg / (height_m ** 2)
 
     def score_from_norm(value, norm_range, max_score=10):
-        """Функция для вычисления баллов на основе нормальных значений."""
+        # Функция для вычисления баллов на основе нормальных значений.
         lower, upper = norm_range
         if lower <= value <= upper:
             return max_score  # Идеальное значение
@@ -109,34 +105,42 @@ def calculate_physiological_score(health_data, age):
 
 
 def calculate_user_answers_score(user_answers):
-    # Валидация ответов
+    # Валидация структуры данных
     if not isinstance(user_answers, list):
         raise TypeError("user_answers должно быть списком")
-    
-    raw_score = 0
-    for ans in user_answers:
-        if "answer" not in ans or "weight" not in ans:
-            raise ValueError("Каждый ответ должен содержать ключи 'answer' и 'weight'")
-        
-        if not isinstance(ans["answer"], bool):
-            raise TypeError("Ответ должен быть типа bool")
-        
-        if not isinstance(ans["weight"], (int, float)):
-            raise TypeError("Вес ответа должен быть числом")
-        
-        if not ans["answer"]:  # Если ответ "Нет"
-            raw_score += ans["weight"]
 
-    # Определение максимального возможного балла
-    max_possible_score = sum(ans["weight"] for ans in user_answers if isinstance(ans.get("weight"), (int, float)))
+    raw_score = 0
+    total_weight = 0
+
+    for ans in user_answers:
+        if not all(k in ans for k in ("answer", "weight", "positive_uns")):
+            raise ValueError("Каждый ответ должен содержать 'answer', 'weight' и 'positive_uns'")
+        
+        answer = ans["answer"]
+        weight = ans["weight"]
+        positive_uns = ans["positive_uns"]
+
+        if answer is not None and not isinstance(answer, bool):
+            raise TypeError("Поле 'answer' должно быть типа bool или None")
+        if not isinstance(weight, (int, float)):
+            raise TypeError("Поле 'weight' должно быть числом")
+        if not isinstance(positive_uns, bool):
+            raise TypeError("Поле 'positive_uns' должно быть типа bool")
+
+        if answer is None:
+            # "Не знаю" — не влияет на расчёт
+            continue
+
+        total_weight += weight
+        if answer == positive_uns:
+            raw_score += weight
 
     # Нормализация до 50-балльной шкалы
-    if max_possible_score > 0:
-        normalized_score = (raw_score / max_possible_score) * 50
-    else:
-        normalized_score = 0  # Если нет ответов, ставим 0
+    normalized_score = (raw_score / total_weight) * 50 if total_weight > 0 else 0
 
     return normalized_score
+
+
 
 def get_interpretation(score: float, age: int) -> str:
     print(f"DEBUG: Вызов get_interpretation(score={score}, age={age})")
