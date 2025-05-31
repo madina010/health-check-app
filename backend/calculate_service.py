@@ -42,10 +42,13 @@ def calculate_for_user(user_id: int):
         }
         
         # Получение ответов пользователя
-        user_answers_raw = session.query(UserAnswer, Question.weight).join(Question).filter(UserAnswer.user_id == user_id).all()
-
+        user_answers_raw = session.query(UserAnswer, Question.weight, Question.positive_uns).join(Question).filter(UserAnswer.user_id == user_id).all()
         user_answers = [
-            {"question_id": row[0].question_id, "weight": float(row[1]), "answer": bool(row[0].answer) if row[0].answer is not None else False}
+            {"question_id": row[0].question_id,
+            "weight": float(row[1]),
+            "positive_uns": bool(row[2]),
+            "answer": bool(row[0].answer) if row[0].answer is not None else False
+            }
             for row in user_answers_raw
         ]
 

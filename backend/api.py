@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -10,9 +10,11 @@ from backend.services.result_service import save_health_score
 from backend.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from datetime import date
+from datetime import datetime
 from typing import List
 from backend.calculations.prompt_builder import build_prompt
+import os
+from uuid import uuid4
 from g4f import ChatCompletion
 from g4f.models import (
     gpt_4, gpt_4o, gpt_3_5_turbo, claude_3_5_sonnet, llama_3_2_11b, mixtral_8x22b
@@ -33,7 +35,7 @@ class TokenData(BaseModel):
 class UserCreate(BaseModel):
     full_name: str
     gender: Optional[str] = None
-    birthdate: date
+    birthdate: datetime
     email: EmailStr
     password: str
 
@@ -49,6 +51,11 @@ class UserInput(BaseModel):
     height: int
     weight: int
     answers: List[AnswerInput]
+    
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    birth_date: str | None = None 
 
 # Вспомогательные функции
 
@@ -194,7 +201,7 @@ def submit_health_data(data: UserInput, current_user: User = Depends(get_current
     if result_data:
         age = current_user.age if hasattr(current_user, 'age') else 0
         save_health_score(db, current_user.id, result_data, age)
-        db.commit()  # коммит один раз в конце всего
+        db.commit()  
 
         return {
             "total_score": round(result_data["total_score"], 2),
@@ -301,3 +308,63 @@ def generate_recommendation(
     print(f"[INFO] Recommendation content preview: {recommendation[:500]}")
 
     return {"recommendation": recommendation}
+
+# Загрузка фото профиля
+UPLOAD_DIR = "uploads/avatars"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/users/upload-avatar")
+def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Проверим тип
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+    # Сохраняем файл
+    filename = f"user_{current_user.id}_{uuid4().hex[:8]}.{file.filename.split('.')[-1]}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+
+    with open(file_path, "wb") as image_file:
+        content = file.file.read()
+        image_file.write(content)
+
+    # Сохраняем путь в базу
+    relative_path = f"/uploads/avatars/{filename}"
+    current_user.avatar_path = relative_path
+    db.commit()
+
+    return {"message": "Avatar uploaded successfully", "avatar_path": relative_path}
+
+# Редактирование данных профиля
+@router.put("/users/profile")
+async def update_profile(
+    data: UserUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if data.name:
+        current_user.name = data.name
+    if data.email:
+        current_user.email = data.email
+    if data.birth_date:
+        try:
+            current_user.birth_date = datetime.strptime(data.birth_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Неверный формат даты рождения")
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Профиль успешно обновлен",
+        "user": {
+            "id": current_user.id,
+            "name": current_user.name,
+            "email": current_user.email,
+            "birth_date": current_user.birth_date.isoformat() if current_user.birth_date else None,
+            "avatar_path": current_user.avatar_path,
+        }
+    }

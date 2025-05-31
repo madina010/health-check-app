@@ -14,6 +14,7 @@ class User(Base):
     birth_date = Column(Date, nullable=False)
     gender = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    avatar_path = Column(String, nullable=True)
 
     health_data = relationship("HealthData", back_populates="user", uselist=False)
     answers = relationship("UserAnswer", back_populates="user")
@@ -23,7 +24,7 @@ class HealthData(Base):
     __tablename__ = "health_data"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     systolic_bp = Column(Integer, nullable=False)
     diastolic_bp = Column(Integer, nullable=False)
     pulse = Column(Integer, nullable=False)
